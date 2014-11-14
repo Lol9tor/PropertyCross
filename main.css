@@ -1,0 +1,13 @@
+button {
+    width: 80px;
+    height: 25px;
+    font: 20px Georgia;
+}
+
+#faves {
+    margin-left: 90%;
+}
+
+h1 {
+    text-align: center;
+}
