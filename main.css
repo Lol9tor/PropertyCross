@@ -8,6 +8,12 @@ button {
     margin-left: 90%;
 }
 
+li {
+    list-style-type: none;
+    border: 1px solid black;
+    margin: 5px;
+}
+
 h1 {
     text-align: center;
 }
