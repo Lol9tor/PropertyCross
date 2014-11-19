@@ -28,7 +28,6 @@
             bedroomNumber: 2,
             keywords: 'some words',
             description: 'some description',
-            totalResults: 19,
             name: 'model',
             guid: '',
             isFaves: false
@@ -57,24 +56,31 @@
             }
             var city = PropertyCross.instance.views.main.getValue();
             if (city && /^[a-zA-Z-]*$/.test(city)) {
-
-
                 PropertyCross.instance.collections.search.fetch({
                     url: 'http://api.nestoria.co.uk/api?country=uk&pretty=1&action=search_listings&encoding=json&listing_type=buy&page=1&place_name='+city,
                     type: 'POST',
                     dataType: 'jsonp',
                     reset: true,
                     success: function (collection, response, options) {
-                        console.log(collection, response, options);
+                        var data = response;
+                        if (data.response.application_response_code <= 110) {
+                            PropertyCross.instance.collections.search.totalResults = data.response.total_results;
+                            PropertyCross.instance.views.main.$el.remove();
+                            PropertyCross.instance.views.search = new PropertyCross.constructor.Views.Search({
+                                collection: PropertyCross.instance.collections.search
+                            });
+                            PropertyCross.instance.collections.lastSearch.push({
+                                totalResult: PropertyCross.instance.collections.search.totalResults,
+                                city: city
+                            })
+                        } else {
+                            PropertyCross.instance.router.navigate('error', {trigger: true});
+                        }
                     },
                     error: function () {
                         console.log('error!');
                     }
                 });
-                PropertyCross.instance.collections.lastSearch.push({
-                    totalResult: PropertyCross.instance.collections.search.totalResults,
-                    city: city
-                })
             } else {
                 PropertyCross.instance.router.navigate('error', {trigger: true});
             }
@@ -82,7 +88,6 @@
         details: function (id) {
             this.hideListView();
             var model = PropertyCross.instance.collections.search.where({guid: id});
-            console.log(model, PropertyCross.instance.collections.search);
             PropertyCross.instance.views.details = new PropertyCross.constructor.Views.Details({
                 model: model[0]
             });
@@ -108,7 +113,18 @@
 
     PropertyCross.constructor.Collections.LastSearch = Backbone.Collection.extend({
         initialize: function () {
-
+            this.on('add', this.saveLocal);
+            this.on('change', this.saveLocal);
+            this.on('remove', this.saveLocal);
+            this.loadLocal();
+        },
+        saveLocal: function () {
+            var data = JSON.stringify(this.toJSON());
+            localStorage.setItem('lastSearchList', data);
+        },
+        loadLocal: function () {
+            var data = localStorage.getItem('lastSearchList');
+            this.reset(JSON.parse(data));
         }
     });
 
@@ -117,38 +133,28 @@
         url: '',
         totalResuts: 0,
         parse: function (data) {
-            if (data.response.application_response_code <= 110) {
-                var modelsData = data.response.listings;
-                for (var i = 0; i < modelsData.length; i++) {
-                    this.push({
-                        title: modelsData[i].lister_name,
-                        price: modelsData[i].price,
-                        place: modelsData[i].title,
-                        bigImg: modelsData[i].img_url,
-                        smallImg: modelsData[i].thumb_url,
-                        bathroomNumber: modelsData[i].bathroom_number,
-                        bedroomNumber: modelsData[i].bedroom_number,
-                        keywords: modelsData[i].keywords,
-                        description: modelsData[i].summary,
-                        name: modelsData[i].datasource_name,
-                        guid: modelsData[i].guid,
-                        isFaves: false
-                    })
-                }
-                this.totalResults = data.response.total_results;
-                 PropertyCross.instance.views.main.$el.remove();
-                 PropertyCross.instance.views.search = new PropertyCross.constructor.Views.Search({
-                 collection: this
-                 });
-            } else {
-                PropertyCross.instance.router.navigate('error', {trigger: true});
+            var modelsData = data.response.listings;
+            for (var i = 0; i < modelsData.length; i++) {
+                this.push({
+                    title: modelsData[i].lister_name,
+                    price: modelsData[i].price,
+                    place: modelsData[i].title,
+                    bigImg: modelsData[i].img_url,
+                    smallImg: modelsData[i].thumb_url,
+                    bathroomNumber: modelsData[i].bathroom_number,
+                    bedroomNumber: modelsData[i].bedroom_number,
+                    keywords: modelsData[i].keywords,
+                    description: modelsData[i].summary,
+                    name: modelsData[i].datasource_name,
+                    guid: modelsData[i].guid,
+                    isFaves: false
+                })
             }
         },
         initialize: function () {
             this.on('add', this.saveLocal);
             this.on('change', this.saveLocal);
             this.on('remove', this.saveLocal);
-            this.on('reset', this.saveLocal);
             this.loadLocal();
         },
         saveLocal: function () {
@@ -191,6 +197,7 @@
         },
         openSearch: function () {
             //move to hash proplist
+            console.log('ok');
             PropertyCross.instance.router.navigate('proplist', {trigger: true });
         },
         openFaves: function () {
@@ -240,11 +247,9 @@
             this.render();
         },
         render: function () {
-            console.log(this.model);
             this.$el.html( this.template(this.model.toJSON()) );
             document.body.appendChild(this.el);
             return this;
-
         },
         addToFaves: function () {
             if (!(this.model in PropertyCross.instance.collections.faves)){
