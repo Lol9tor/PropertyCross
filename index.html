@@ -20,19 +20,36 @@
             <input id="cityInput" type="text"/>
         </p>
         <button id="go">GO</button>
+        <div id="list">
+            <span>last search 1</span>
+        </div>
     </script>
     <script type="text/template" id="templateSearchPage">
-        <% console.log(model) %>
-        <h1>Found <%= model[0].totalResults %> matches</h1>
+        <h1>Found <%= totalResults %> matches</h1>
+        <button id="backToMain">Back</button>
         <ul id="search">
             <% _.each(model, function(item) { %>
-            <li>
-                <img src="<%= item.smallImg %>" alt="picture"/>
-                <span id="price"> $<%= item.price %></span>
-                <span id="place"><%= item.place %></span>
+            <li id="<%= item.guid %>">
+                <img src="<%= item.smallImg %>" alt="picture" align="left"/>
+                <div id="price"><strong>Price - </strong>$<%= item.price %></div>
+                <div id="place"><strong>Location - </strong><%= item.place %></div>
             </li>
             <% }) %>
         </ul>
+    </script>
+    <script type="text/template" id="templateDetails">
+        <h1><%= title %></h1>
+        <button id="backToSearch">Back</button>
+        <button id="addToFaves">+</button>
+        <h2>$<%= price %></h2>
+        <h2><%= place %></h2>
+        <img src="<%= bigImg %>" alt="picture"/>
+        <p><%= bedroomNumber %> bedroom, <%= bathroomNumber %> bathroom</p>
+        <p><%= keywords %></p>
+        <p><%= description %></p>
+    </script>
+    <script type="text/template" id="templateError">
+        <p>Error input! Check the correct input city and try again.</p>
     </script>
     <script src="lib/jquery-2.1.1.min.js" type="text/javascript"></script>
     <script src="lib/underscore.js" type="text/javascript"></script>

@@ -1,19 +1,46 @@
 button {
-    width: 80px;
-    height: 25px;
     font: 20px Georgia;
+    margin: 5px;
 }
 
 #faves {
     margin-left: 90%;
+    display: block;
+}
+
+#addToFaves, #backToSearch {
+    display: inline-block;
+}
+
+#addToFaves {
+   margin-left: 85%;
+}
+
+#list {
+    border: solid 1px black;
+}
+
+#list {
+    width: 50%;
 }
 
 li {
     list-style-type: none;
     border: 1px solid black;
     margin: 5px;
+    width: 70%;
+    display: inline-block;
+    cursor: pointer;
+}
+
+li>div {
+    margin: 8px;
 }
 
 h1 {
     text-align: center;
+}
+
+img {
+
 }

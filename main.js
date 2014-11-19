@@ -15,6 +15,8 @@
          }
      };
 
+     /*    MODELS      */
+
     PropertyCross.constructor.Models.Details = Backbone.Model.extend({
         defaults: {
             title: 'Property Details',
@@ -27,112 +29,149 @@
             keywords: 'some words',
             description: 'some description',
             totalResults: 19,
+            name: 'model',
+            guid: '',
             isFaves: false
         }
     });
 
     PropertyCross.instance.models.details = new PropertyCross.constructor.Models.Details();
 
+    /*    ROUTER      */
+
     PropertyCross.constructor.Router = Backbone.Router.extend({
         routes: {
             '' : 'index',
             'proplist': 'propertyList',
-            'details': 'details',
+            'details/:query': 'details',
             'faves': 'favourites',
             '*other': 'defaults'
 },
         index: function () {
-            $('ul').remove();
-            PropertyCross.instance.views.main = new PropertyCross.constructor.Views.Main();
+            this.hideListView();
+            PropertyCross.instance.views.main.render();
         },
         propertyList: function () {
-            var city = $('#cityInput').val();
-            if (city && /^[a-zA-Z]*$/.test(city)) {
-                PropertyCross.instance.collections.search = new PropertyCross.constructor.Collections.Search();
-                $.ajax({
-                    url: 'http://api.nestoria.co.uk/api?country=uk&pretty=1&action=search_listings&encoding=json&listing_type=buy&page=1&place_name=' + city,
+            if (PropertyCross.instance.views.details){
+                PropertyCross.instance.views.details.$el.remove();
+            }
+            var city = PropertyCross.instance.views.main.getValue();
+            if (city && /^[a-zA-Z-]*$/.test(city)) {
+
+
+                PropertyCross.instance.collections.search.fetch({
+                    url: 'http://api.nestoria.co.uk/api?country=uk&pretty=1&action=search_listings&encoding=json&listing_type=buy&page=1&place_name='+city,
                     type: 'POST',
                     dataType: 'jsonp',
-                    success: function (data) {
-                        if (data.response.application_response_code <= 110) {
-                            var modelsData = data.response.listings;
-                            for (var i = 0; i < modelsData.length; i++) {
-                                PropertyCross.instance.collections.search.push({
-                                    title: modelsData[i].lister_name,
-                                    price: modelsData[i].price,
-                                    place: modelsData[i].title,
-                                    bigImg: modelsData[i].img_url,
-                                    smallImg: modelsData[i].thumb_url,
-                                    bathroomNumber: modelsData[i].bathroom_number,
-                                    bedroomNumber: modelsData[i].bedroom_number,
-                                    keywords: modelsData[i].keywords,
-                                    description: modelsData[i].summary,
-                                    totalResults: data.response.total_results,
-                                    isFaves: false
-                                })
-                            }
-                            $('#main').remove();
-                            console.log(PropertyCross.instance.collections.search);
-                            PropertyCross.instance.views.search = new PropertyCross.constructor.Views.Search({
-                                collection: PropertyCross.instance.collections.search
-                            });
-                        } else {
-                            PropertyCross.instance.router.navigate('error', {trigger: true});
-                        }
-
+                    reset: true,
+                    success: function (collection, response, options) {
+                        console.log(collection, response, options);
+                    },
+                    error: function () {
+                        console.log('error!');
                     }
                 });
+                PropertyCross.instance.collections.lastSearch.push({
+                    totalResult: PropertyCross.instance.collections.search.totalResults,
+                    city: city
+                })
             } else {
                 PropertyCross.instance.router.navigate('error', {trigger: true});
             }
         },
-        details: function () {
-            console.log('details');
+        details: function (id) {
+            this.hideListView();
+            var model = PropertyCross.instance.collections.search.where({guid: id});
+            console.log(model, PropertyCross.instance.collections.search);
+            PropertyCross.instance.views.details = new PropertyCross.constructor.Views.Details({
+                model: model[0]
+            });
         },
         favourites: function () {
             console.log('favourites');
         },
+        hideListView: function () {
+            if (PropertyCross.instance.views.search){
+                PropertyCross.instance.views.search.$el.remove();
+            }
+        },
         defaults: function () {
-            $('ul').remove();
-            $('#error').remove();
-            //PropertyCross.instance.views.main = new PropertyCross.constructor.Views.Main();
-            $('#main').append('<p id="error">Error input! Check the correct input city and try again.</p>')
+            this.hideListView();
+            PropertyCross.instance.views.error.$el.remove();
+            PropertyCross.instance.views.main.$el.append(PropertyCross.instance.views.error.el)
         }
     });
     PropertyCross.instance.router = new PropertyCross.constructor.Router;
 
+
+    /*    COLLECTIONS       */
+
     PropertyCross.constructor.Collections.LastSearch = Backbone.Collection.extend({
-        model: PropertyCross.constructor.Models.Details,
         initialize: function () {
-            this.listenTo(this, 'add', this.render);
-            this.listenTo(this, 'remove', this.remove);
-        },
-        render: function () {
 
         }
     });
 
     PropertyCross.constructor.Collections.Search = Backbone.Collection.extend({
         model: PropertyCross.constructor.Models.Details,
-        initialize: function () {
-            this.listenTo(this, 'add', this.render);
-            this.listenTo(this, 'remove', this.remove);
+        url: '',
+        totalResuts: 0,
+        parse: function (data) {
+            if (data.response.application_response_code <= 110) {
+                var modelsData = data.response.listings;
+                for (var i = 0; i < modelsData.length; i++) {
+                    this.push({
+                        title: modelsData[i].lister_name,
+                        price: modelsData[i].price,
+                        place: modelsData[i].title,
+                        bigImg: modelsData[i].img_url,
+                        smallImg: modelsData[i].thumb_url,
+                        bathroomNumber: modelsData[i].bathroom_number,
+                        bedroomNumber: modelsData[i].bedroom_number,
+                        keywords: modelsData[i].keywords,
+                        description: modelsData[i].summary,
+                        name: modelsData[i].datasource_name,
+                        guid: modelsData[i].guid,
+                        isFaves: false
+                    })
+                }
+                this.totalResults = data.response.total_results;
+                 PropertyCross.instance.views.main.$el.remove();
+                 PropertyCross.instance.views.search = new PropertyCross.constructor.Views.Search({
+                 collection: this
+                 });
+            } else {
+                PropertyCross.instance.router.navigate('error', {trigger: true});
+            }
         },
-        render: function () {
-
+        initialize: function () {
+            this.on('add', this.saveLocal);
+            this.on('change', this.saveLocal);
+            this.on('remove', this.saveLocal);
+            this.on('reset', this.saveLocal);
+            this.loadLocal();
+        },
+        saveLocal: function () {
+            var data = JSON.stringify(this.toJSON());
+            localStorage.setItem('searchList', data);
+        },
+        loadLocal: function () {
+            var data = localStorage.getItem('searchList');
+            this.reset(JSON.parse(data));
         }
     });
 
     PropertyCross.constructor.Collections.Faves = Backbone.Collection.extend({
         model: PropertyCross.constructor.Models.Details,
         initialize: function () {
-            this.listenTo(this, 'add', this.render);
-            this.listenTo(this, 'remove', this.remove);
-        },
-        render: function () {
 
         }
     });
+    PropertyCross.instance.collections.faves = new PropertyCross.constructor.Collections.Faves;
+    PropertyCross.instance.collections.search = new PropertyCross.constructor.Collections.Search();
+    PropertyCross.instance.collections.lastSearch = new PropertyCross.constructor.Collections.LastSearch();
+
+    /*     VIEWS         */
 
     PropertyCross.constructor.Views.Main = Backbone.View.extend({
         tagName: 'div',
@@ -140,13 +179,11 @@
         template: _.template($('#templateFirstPage').html()),
         events: {
             "click #go": "openSearch",
-            //"click #faves": "openSearch",
+            "click #faves": "openFaves",
             "click li": "openSearch"
         },
         initialize: function () {
             this.render();
-            //this.listenTo(this.model, 'change', this.render);
-            //this.listenTo(this.model, 'destroy', this.remove);
         },
         render: function () {
             this.$el.html( this.template() );
@@ -155,54 +192,83 @@
         openSearch: function () {
             //move to hash proplist
             PropertyCross.instance.router.navigate('proplist', {trigger: true });
+        },
+        openFaves: function () {
+            PropertyCross.instance.router.navigate('faves', {trigger: true });
+        },
+        getValue: function () {
+            return this.$('#cityInput').val();
         }
-
     });
+    PropertyCross.instance.views.main = new PropertyCross.constructor.Views.Main();
+
 
     PropertyCross.constructor.Views.Search = Backbone.View.extend({
         tagName: 'ul',
         template: _.template($('#templateSearchPage').html()),
         events: {
-            //"click li": "openDetails"
+            "click li": "openDetails",
+            "click #backToMain": "returnBack"
         },
         initialize: function () {
             this.render();
         },
         render: function () {
-            this.$el.html( this.template({model: this.collection.toJSON()}) );
-/*            this.collection.each(function (model) {
-                var detailsView = new PropertyCross.constructor.Views.Details({model: model});
-                this.$el.append( detailsView.el );
-            }, this);*/
+            this.$el.html( this.template({model: this.collection.toJSON(), totalResults: this.collection.totalResults}) );
             document.body.appendChild(this.el);
             return this;
         },
-        openDetails: function () {
+        openDetails: function (e) {
             //move to hash details
-            var router = new PropertyCross.constructor.Router;
-            router.navigate('details', {trigger: true });
+           var id = $(e.currentTarget).attr('id');
+           PropertyCross.instance.router.navigate('details/'+id, {trigger: true });
+        },
+        returnBack: function () {
+            PropertyCross.instance.router.navigate('', {trigger: true });
         }
 
     });
 
     PropertyCross.constructor.Views.Details = Backbone.View.extend({
-        tagName: 'li',
-        model: PropertyCross.instance.models.details,
+        tagName: 'div',
         events: {
-            'click button': 'addToFaves'
+            'click #addToFaves': 'addToFaves',
+            'click #backToSearch': 'returnBack'
         },
+        template: _.template($('#templateDetails').html()),
         initialize: function () {
-
+            this.render();
         },
         render: function () {
-
-
+            console.log(this.model);
+            this.$el.html( this.template(this.model.toJSON()) );
+            document.body.appendChild(this.el);
             return this;
 
         },
         addToFaves: function () {
-
+            if (!(this.model in PropertyCross.instance.collections.faves)){
+                PropertyCross.instance.collections.faves.push(this.model);
+            }
+        },
+        returnBack: function () {
+            PropertyCross.instance.router.navigate('proplist', {trigger: true });
         }
     });
+
+    PropertyCross.constructor.Views.Error = Backbone.View.extend({
+        tagName: 'div',
+        template: _.template($('#templateError').html()),
+        initialize: function () {
+            this.render();
+        },
+        render: function () {
+            this.$el.html( this.template() )
+        }
+    });
+    PropertyCross.instance.views.error = new PropertyCross.constructor.Views.Error();
+
+    /*      */
+
     Backbone.history.start();
 })();
