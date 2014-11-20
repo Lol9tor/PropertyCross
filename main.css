@@ -18,10 +18,27 @@ button {
 
 #list {
     border: solid 1px black;
+    width: 50%;
+    max-height: 30%;
+    margin: 5px;
+    padding: 5px;
 }
 
-#list {
-    width: 50%;
+#list>div {
+    padding: 5px;
+}
+
+#list>div:hover {
+    border: 1px solid black;
+    cursor: pointer;
+}
+
+a {
+    text-decoration: none;
+    border: 1px solid red;
+}
+a:hover {
+    border: 2px solid green;
 }
 
 li {
@@ -37,7 +54,7 @@ li>div {
     margin: 8px;
 }
 
-h1 {
+h1, h4 {
     text-align: center;
 }
 

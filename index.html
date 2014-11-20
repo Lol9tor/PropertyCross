@@ -25,11 +25,15 @@
         </p>
         <button id="go">GO</button>
         <div id="list">
-            <span>last search 1</span>
+            <a href="#" id="delHistory">clear history</a>
+            <h4>Last search:</h4>
+            <% _.each(models, function(item) { %>
+            <div><span><%= item.city %></span> ( <%= item.totalResults %> ) - <%= (new Date(item.date)).toLocaleDateString() %></div>
+            <% }) %>
         </div>
     </script>
     <script type="text/template" id="templateSearchPage">
-        <h1>Found <%= totalResults %> matches</h1>
+        <h1>Found <%= totalResults %> results</h1>
         <button id="backToMain">Back</button>
         <ul id="search">
             <% _.each(model, function(item) { %>
@@ -40,11 +44,18 @@
             </li>
             <% }) %>
         </ul>
+        <a id="more" href="#">More</a>
     </script>
     <script type="text/template" id="templateDetails">
         <h1><%= title %></h1>
         <button id="backToSearch">Back</button>
-        <button id="addToFaves">+</button>
+        <button id="addToFaves">
+            <% if(isFaves) { %>
+            \/
+            <% }else { %>
+            +
+            <% } %>
+        </button>
         <h2>$<%= price %></h2>
         <h2><%= place %></h2>
         <img src="<%= bigImg %>" alt="picture"/>
