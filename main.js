@@ -51,17 +51,19 @@
             this.navigateMainView();
         },
         propertyList: function (city, page) {
-            this.hideAllView();
+
             var self = this;
             if (city && /^[a-zA-Z-]*$/.test(city)) {
                 PropertyCross.instance.collections.search.fetch({
                     url: 'http://api.nestoria.co.uk/api?country=uk&pretty=1&action=search_listings&encoding=json&listing_type=buy&page='+page+'&place_name='+city,
                     type: 'POST',
                     dataType: 'jsonp',
-                    reset: true,
+                    remove: false,
                     success: function (collection, response, options) {
                         var data = response;
                         if (data.response.application_response_code <= 110) {
+                            console.log(PropertyCross.instance.collections.search);
+                            self.hideAllView();
                             PropertyCross.instance.collections.search.totalResults = data.response.total_results;
                             PropertyCross.instance.views.search.attachCollection(PropertyCross.instance.collections.search);
                             PropertyCross.instance.collections.lastSearch.setData(city, data.response.total_results);
@@ -95,31 +97,36 @@
         },
         hideAllView: function () {
             PropertyCross.instance.views.main.$el.hide();
-            PropertyCross.instance.views.search.$el.hide();
-            PropertyCross.instance.views.details.$el.hide();
             PropertyCross.instance.views.main.$el.detach();
+
+            PropertyCross.instance.views.search.$el.hide();
             PropertyCross.instance.views.search.$el.detach();
+
+            PropertyCross.instance.views.details.$el.hide();
             PropertyCross.instance.views.details.$el.detach();
+
         },
         navigateMainView: function () {
             PropertyCross.instance.views.main.$el.appendTo(document.body);
-            PropertyCross.instance.views.main.$el.show();
+            PropertyCross.instance.collections.search.reset();
+            PropertyCross.instance.views.main.$el.fadeIn(500);
         },
         navigateSearchView: function () {
             PropertyCross.instance.views.search.$el.appendTo(document.body);
-            PropertyCross.instance.views.search.$el.show();
+            PropertyCross.instance.views.search.$el.fadeIn(500);
         },
         navigateDetailsView: function () {
             PropertyCross.instance.views.details.$el.appendTo(document.body);
-            PropertyCross.instance.views.details.$el.show();
+            PropertyCross.instance.collections.search.reset();
+            PropertyCross.instance.views.details.$el.fadeIn(500);
         },
         defaults: function () {
             //this.hideAllView();
-            PropertyCross.instance.views.error.$el.remove();
-            PropertyCross.instance.views.main.$el.append(PropertyCross.instance.views.error.el)
+            PropertyCross.instance.views.main.$el.append(PropertyCross.instance.views.error.el);
+            this.navigateMainView();
         }
     });
-    PropertyCross.instance.router = new PropertyCross.constructor.Router;
+    PropertyCross.instance.router = new PropertyCross.constructor.Router();
 
     /*    COLLECTIONS       */
 
@@ -150,16 +157,16 @@
     });
 
     PropertyCross.constructor.Collections.Search = Backbone.Collection.extend({
-        model: PropertyCross.constructor.Models.Details,
         url: '',
-        totalResuts: 0,
+        totalResults: 0,
         parse: function (data) {
             if (!data.response.listings){
                 return;
             }
+            var models =[];
             var modelsData = data.response.listings;
             for (var i = 0; i < modelsData.length; i++) {
-                this.push({
+                models.push({
                     title: modelsData[i].lister_name,
                     price: modelsData[i].price,
                     place: modelsData[i].title,
@@ -174,6 +181,7 @@
                     isFaves: false
                 })
             }
+            return models;
         },
         initialize: function () {
             this.on('add', this.saveLocal);
@@ -222,7 +230,8 @@
             "click #go": "openSearch",
             "click #faves": "openFaves",
             "click #list>div": "openLastSearch",
-            "click #delHistory": "clearHistory"
+            "click #delHistory": "clearHistory",
+            "focus #cityInput": "delError"
         },
         initialize: function () {
             this.render();
@@ -252,6 +261,9 @@
             localStorage.removeItem('lastSearchList');
             PropertyCross.instance.collections.lastSearch.reset();
             this.render();
+        },
+        delError: function () {
+            PropertyCross.instance.router.navigate('', {trigger: true});
         }
     });
 
@@ -272,7 +284,7 @@
         },
         attachCollection: function (collection) {
             this.collection.set(collection.toJSON());
-            console.log(collection);
+            this.collection.totalResults = collection.totalResults;
             this.render();
         },
         openDetails: function (e) {
@@ -285,6 +297,9 @@
             var page = location.hash[location.hash.length-1];
             page = parseInt(page);
             page++;
+            if (!page){
+                return;
+            }
             var hash = location.hash.slice(1, -1);
             console.log(hash, page);
             PropertyCross.instance.router.navigate(hash+page, {trigger: true });
@@ -317,6 +332,7 @@
             if (!(this.model in PropertyCross.instance.collections.faves)){
                 this.model.attributes.isFaves = true;
                 PropertyCross.instance.collections.faves.push(this.model);
+                console.log(PropertyCross.instance.collections.faves);
                 this.render();
             }
         },
